@@ -1,0 +1,34 @@
+meta {
+  name: Update game model - Not Found
+  type: http
+  seq: 8
+}
+
+put {
+  url: http://localhost:5066/game-model/{{gameModelId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "modelUpdated",
+    "scoring_type": "tRaD",
+    "cylinders": [
+      {
+        "latitude": 20, 
+        "longitude": 20, 
+        "radius": 430
+      },
+      {
+        "latitude": 1200, 
+        "longitude": 1200, 
+        "radius": 3400
+      }
+    ]
+  }
+}
+
+vars:pre-request {
+  gameModelId: 0
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Update player location - Not found
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://localhost:5066/player/{{playerId}}/location
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "latitude": 12,
+    "longitude": 21,
+    "altitude": 13
+  }
+}
+
+vars:pre-request {
+  playerId: 0
+}

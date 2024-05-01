@@ -1,0 +1,29 @@
+meta {
+  name: Create game model
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:5066/game-model
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "test",
+    "cylinders": [
+      {
+        "latitude": 1.0, 
+        "longitude": 0, 
+        "radius": 400.0
+      },
+      {
+        "latitude": 1.0, 
+        "longitude": 1.0, 
+        "radius": 400.0
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+meta {
+  name: Create team
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:5066/team
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "team1"
+  }
+}

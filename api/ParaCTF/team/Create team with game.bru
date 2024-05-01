@@ -1,0 +1,18 @@
+meta {
+  name: Create team with game
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:5066/team
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "gameId": 2,
+    "name": "team1"
+  }
+}

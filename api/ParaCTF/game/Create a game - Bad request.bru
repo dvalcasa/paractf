@@ -1,0 +1,21 @@
+meta {
+  name: Create a game - Bad request
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:5066/game/{{gameModelId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "naMe": "game1"
+  }
+}
+
+vars:pre-request {
+  gameModelId: 1
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get a game
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:5066/game/{{gameId}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  gameId: 2
+}

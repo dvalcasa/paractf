@@ -75,6 +75,13 @@ Basically :
 - a models.py model code
 - a game.db sqlite3 DB file. So far it seems to be efficient with a couple of thousands locations histories
 
+### ###
+brew install python
+python -m venv .venv
+. venv/bin/activate
+pip install flask
+pip install sqlalchemy
+
 ### Running it
 NGINX configured for serving
 - the static web/ directory on an exposed static/ directory in the URL

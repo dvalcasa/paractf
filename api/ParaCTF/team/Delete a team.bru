@@ -1,0 +1,15 @@
+meta {
+  name: Delete a team
+  type: http
+  seq: 3
+}
+
+delete {
+  url: http://localhost:5066/team/{{teamId}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  teamId: 1
+}

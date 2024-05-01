@@ -1,0 +1,15 @@
+meta {
+  name: Delete a game
+  type: http
+  seq: 4
+}
+
+delete {
+  url: http://localhost:5066/game/{{gameId}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  gameId: 2
+}

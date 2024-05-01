@@ -1,0 +1,18 @@
+meta {
+  name: Create game model - Bad request
+  type: http
+  seq: 7
+}
+
+post {
+  url: http://localhost:5066/game-model
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "test",
+    "cylinders": [{"longitude":0, "radius":""}]
+  }
+}

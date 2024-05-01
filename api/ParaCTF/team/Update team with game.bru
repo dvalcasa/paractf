@@ -1,0 +1,22 @@
+meta {
+  name: Update team with game
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://localhost:5066/team/{{teamId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Team 🪂",
+    "gameId": 2
+  }
+}
+
+vars:pre-request {
+  teamId: 1
+}

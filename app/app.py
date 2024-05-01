@@ -1,20 +1,23 @@
 # app.py
 
 from flask import Flask, request, jsonify, render_template
-from models import Base, Game, Team, TeamMember, Cylinder
 from game import GameManager
-from flask_sqlalchemy import SQLAlchemy
 import os
+import logging
 
 app = Flask(__name__, template_folder='web')
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///game.db'
-# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.json.sort_keys = False
 
-# db = SQLAlchemy(app)
-# with app.app_context():
-#     db.create_all()
+# Create and configure logger
+logging.basicConfig(format='%(asctime)s %(message)s')
+ 
+# Creating an object
+logger = logging.getLogger()
+ 
+# Setting the threshold of logger to DEBUG
+logger.setLevel(logging.DEBUG)
 
-manager = GameManager()#db.session)
+manager = GameManager()
 
 # Serve static files from the 'web' directory
 app.static_folder = 'web'
@@ -25,163 +28,163 @@ app.static_url_path= '/static'
 def index():
     return render_template('index.html')
 
-# Create a new game
-@app.route('/game', methods=['POST'])
-def create_game():
+############## GAME MODEL ##############
+
+# Get all game models
+@app.route('/game-models', methods=['GET'])
+def get_allGameModels():
+    return manager.gameController.get_allGameModels(), 200
+
+# Get a game model
+@app.route('/game-model/<int:gameModelId>', methods=['GET'])
+def get_gameModel(gameModelId: int):
+    logger.debug("get_gameModel: gameModelId [%d]", gameModelId)
+
+    return manager.get_gameModel(gameModelId), 200
+
+# Create a game model
+@app.route('/game-model', methods=['POST'])
+def create_gameModel():
     data = request.get_json()
+    logger.debug("create_gameModel: data %s", data)
 
-    if 'name' not in data or 'cylinders' not in data:
-        return jsonify({'error': 'Invalid payload'}), 400
+    name: str = data.get("name")
+    cylinders: list = data.get("cylinders")
 
-    name = data['name']
-    cylinders_data = data['cylinders']
-    cylinders = [Cylinder(c['latitude'], c['longitude'], c['radius']) for c in cylinders_data]
-    new_game = manager.create_game(name, cylinders)
-    print (new_game)
+    return manager.create_model(name, cylinders), 201
 
-    return jsonify({'game': new_game.to_json() , 'message': 'Game created successfully'}), 201
-
-# Update game
-@app.route('/game/<int:game_id>', methods=['PATCH'])
-def update_game(game_id):
-
+# Update a game model
+@app.route('/game-model/<int:gameModelId>', methods=['PUT'])
+def update_gameModel(gameModelId: int):
+    ("update_gameModel: gameModelId [%d]", gameModelId)
     data = request.get_json()
+    logger.debug("update_gameModel: data %s", data)
 
-    game = manager.update_game(game_id, data) #data['cylinders'])
+    name: str = data.get("name")
+    scoringType: str = data.get("scoring_type")
+    cylinders: list = data.get("cylinders")
 
-    return jsonify({'game': game.to_json(), 'message': 'Game updated successfully'}), 200
+    return manager.update_model(gameModelId, name, cylinders, scoringType), 201
+
+# Delete game model
+@app.route('/game-model/<int:gameModelId>', methods=['DELETE'])
+def delete_gameModel(gameModelId: int):
+    logger.debug("delete_gameModel: gameModelId [%d]", gameModelId)
+
+    return manager.delete_gameModel(gameModelId), 204
+
+############## GAME ##############
+
+# Get all games
+@app.route("/games", methods=['GET'])
+def get_allGames():
+    return manager.gameController.get_allGames(), 200
 
 # Get a game
-@app.route('/game/<int:game_id>', methods=['GET'])
-def get_single_game(game_id):
-    g = manager.find_game_by_id(game_id)
-    if g:
-        return jsonify({'game': g.to_json()}), 200
-    else:
-        return jsonify({'message': 'error'}), 400
-    
-    
-# List all games
-@app.route('/game', methods=['GET'])
-def get_games():
-    games = manager.list_games()
-    return (games)
+@app.route('/game/<int:gameId>', methods=['GET'])
+def get_game(gameId: int):
+    logger.debug("get_game: gameId [%d]", gameId)
 
-# Delete game
-@app.route('/game/<int:game_id>', methods=['DELETE'])
-def delete_game(game_id):
-    if manager.delete_game(game_id):
-        return jsonify({'message': "ok"}), 200
-    else:
-        return jsonify({'message': "error"}), 500
+    return manager.get_game(gameId), 200
 
+# Create game
+@app.route('/game/<int:gameModelId>', methods=['POST'])
+def create_game(gameModelId: int):
+    logger.debug("create_game: gameModelId [%d]", gameModelId)
+    data = request.get_json()
+    logger.debug("create_game: data %s", data)
 
-# Create game instance
-@app.route('/igame/<int:game_id>', methods=['POST'])
-def create_igame(game_id):
-    data = request.json
-    if 'name' in data:
-        gi = manager.create_igame(data['name'], game_id)
-        if gi:
-            return jsonify({'igame': gi.to_json(), 'message': 'ok'}), 200
+    name: str = data.get("name") 
+    return manager.create_game(gameModelId, name), 201
 
-    return jsonify({'message': 'nok'}), 500
+# Delete a game
+@app.route('/game/<int:gameId>', methods=['DELETE'])
+def delete_game(gameId: int):
+    logger.debug("delete_game: gameId [%d]", gameId)
+    return manager.delete_game(gameId), 204
 
-# Get all igames
-@app.route("/igame", methods=['GET'])
-def get_igames():
-    igames = manager.get_all_igames()
-    if igames:
-        return jsonify({"igames": [ g.to_json() for g in igames ], 'message': 'ok' })
-    else:
-        return jsonify({'message': 'nok'}), 500
+############## TEAM ##############
 
-# Get a igame
-@app.route('/igame/<int:igame_id>', methods=['GET'])
-def get_igame(igame_id):
-    igame = manager.find_igame_by_id(igame_id)
-    if igame:
-        return jsonify({'igame': igame.to_json(), 'latest_score': manager.score_igame(igame.id), 'score': manager.score_igame_total(igame.id), 'message': 'ok'}), 200
-    else:
-        return jsonify({'message': 'nok'}), 404
-
- # Delete a igame
-@app.route('/igame/<int:igame_id>', methods=['DELETE'])
-def delete_igame(igame_id):
-    if manager.delete_igame(igame_id):
-        return jsonify({'message': 'ok'}), 200
-    else:
-        return jsonify({'message': 'nok'}), 500
-    
 # Create a team
-@app.route('/igame/<int:igame_id>/team', methods=['POST'])
-def create_team(igame_id):
-    data = request.json
-    game_id = data.get('igame_id')
-    name = data.get('name')
-    if name and name != "":
-        team = manager.create_team(igame_id, name)
-        return jsonify({ 'id': team.id, 'message': f'Team "{team.name}" created successfully!'}), 201
-    else:
-        return jsonify({'message': 'nok'}), 404
+@app.route('/team', methods=['POST'])
+def create_team():
+    data = request.get_json()
+    logger.debug("create_team: data %s", data)
+
+    name: str = data.get("name")
+    gameId: int = data.get("gameId")
+
+    return manager.create_team(name, gameId), 201
 
 # Delete a team
-@app.route('/igame/<int:igame_id>/team/<int:team_id>', methods=['DELETE'])
-def delete_team(igame_id, team_id):
-    igame = manager.delete_team(igame_id, team_id)
-    if igame:
-        return jsonify({'igame': igame.to_json(), 'message':'ok'}), 201
-    else:
-        return jsonify({'message': 'nok'}), 500
+@app.route('/team/<int:teamId>', methods=['DELETE'])
+def delete_team(teamId):
+    logger.debug("delete_team: teamId [%d]", teamId)
+    return manager.delete_team(teamId), 204
 
-# Join a Team
-@app.route('/igame/<int:igame_id>/team/<int:team_id>', methods=['POST'])
-def join_team(igame_id, team_id):
-    data = request.json
-    if data and 'player_name' in data and data['player_name'] != "":
-        player = manager.join_igame(igame_id, team_id, data['player_name'])
-        if player:
-            return jsonify({'player': player.to_json(True), 'message': 'ok' })
+# Update team
+@app.route('/team/<int:teamId>', methods=['PUT'])
+def udpate_team(teamId):
+    logger.debug("udpate_team: teamId [%d]", teamId)
+    data = request.get_json()
+    logger.debug("udpate_team: data %s", data)
+    
+    name: str = data.get("name")
+    gameId: int = data.get("gameId")
+    color = data.get("color")
 
-    return jsonify({'message': 'nok'}), 500
+    return manager.udpate_team(teamId, name, gameId, color), 200
 
-# Update team color
-@app.route('/team/<int:team_id>/color', methods=['PATCH'])
-def udpate_color_team(team_id):
-    team = manager.update_team_color(team_id)
-    return jsonify({'message': 'ok'}), 200
+############## PLAYER ##############
 
-# Add a team member
-@app.route('/team/member/add', methods=['POST'])
-def add_team_member():
-    data = request.json
-    team_id = data.get('team_id')
-    name = data.get('name')
-    member = manager.add_team_member(team_id, name)
-    return jsonify({ 'id': member.id, 'message': f'Member "{member.name}" added successfully to the team!'}), 201
+# Create a player
+@app.route('/player', methods=['POST'])
+def create_player():
+    data = request.get_json()
+    logger.debug("create_player: data %s", data)
+
+    name: str = data.get("name")
+    teamId: int = data.get("teamId")
+
+    return manager.create_player(name, teamId), 201
+
+# Add a player to a team
+@app.route('/player/<int:playerId>', methods=['PUT'])
+def update_player(playerId: int):
+    logger.debug("update_player: playerId [%d]", playerId)
+    data = request.get_json()
+    logger.debug("update_player: data %s", data)
+
+    name: str = data.get("name")
+    teamId: int = data.get("teamId")
+
+    player = manager.playerController.update(playerId, name, teamId)
+    return manager.playerController.to_json(player), 200
 
 # Update player location
-@app.route('/player/<int:player_id>', methods=['PATCH'])
-def update_team_member_location(player_id):
-    data = request.json
-    member_pass = data.get('member_password')
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-    altitude = data.get('altitude')
-    manager.update_team_member_location(player_id, member_pass, latitude, longitude, altitude)
-    return jsonify({'message': f'Team member location updated successfully!'}), 200
+@app.route('/player/<int:playerId>/location', methods=['PUT'])
+def update_player_location(playerId):
+    logger.debug("update_player_location: playerId [%d]", playerId)
+    data = request.get_json()
+    logger.debug("update_player_location: data %s", data)
 
-# Create a cylinder
-@app.route('/cylinder/create', methods=['POST'])
-def create_cylinder():
-    data = request.json
-    game_id = data.get('game_id')
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-    radius = data.get('radius')
-    cylinder = manager.create_cylinder(game_id, latitude, longitude, radius)
-    return jsonify({'message': 'Cylinder created successfully!'}), 201
+    longitude = data.get("longitude")
+    latitude = data.get("latitude")
+    altitude = data.get("altitude")
 
+    return manager.update_player_location(playerId, latitude, longitude, altitude), 200
+
+@app.errorhandler(400)
+def bad_request(ex):
+    return jsonify(error=str(ex)), 400
+
+@app.errorhandler(404)
+def resource_not_found(ex):
+    return jsonify(error=str(ex)), 404
+
+@app.errorhandler(500)
+def internal_error(ex):
+    return jsonify(error=str(ex)), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5066))

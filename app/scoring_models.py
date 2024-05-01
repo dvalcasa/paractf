@@ -1,12 +1,18 @@
 from math import radians, sin, cos, sqrt, atan2
 from datetime import datetime
+from enum import Enum
+from models import Game
+
+class ScoringType(Enum):
+    TRAD = 0,
+    DEGRESS = 1
 
 # Abstract super class with some common helpers
 class Scoring():
     def __init__(self):
         return
 
-    def haversine(self, lat1, lon1, lat2, lon2):
+    def haversine(self, lat1: float, lon1: float, lat2: float, lon2: float):
         # Convert latitude and longitude from degrees to radians
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
 
@@ -19,14 +25,14 @@ class Scoring():
 
         return distance
 
-    def is_coordinate_within_circle(self, coord, center, radius):
+    def is_coordinate_within_circle(self, coord: list[float], center: list[float], radius: float):
         # coord and center should be tuples (latitude, longitude)
         distance = self.haversine(coord[0], coord[1], center[0], center[1])
         return distance <= radius
 
-    def get_game_cylinders(slf, igame):
+    def get_game_cylinders(slf, game: Game):
         validations = []
-        for c in igame.game.cylinders:
+        for c in game.cylinders:
             valid = {
                 "cylinder_id": c.id,
                 "lat": c.latitude,
@@ -46,24 +52,24 @@ class Scoring():
         else:
             return self.is_coordinate_within_circle((lh.latitude, lh.longitude),(v['lat'], v['lon']),v['radius']) and v['valid_time'] < int(lh.timestamp.timestamp())
     
-    def score_igame(self, igame):
+    def score_game(self, game: Game):
         return False
 
-    def score_latest_update(self, igame):
+    def score_latest_update(self, game: Game):
         return []
 
-    def get_zero_counters(self, igame):
-        counters={ team.id: 0 for team in igame.teams }
+    def get_zero_counters(self, game: Game):
+        counters={ team.id: 0 for team in game.teams }
         return counters
     
-    def get_all_lh_dict_sorted(self, igame):
+    def get_all_lh_dict_sorted(self, game: Game):
         all_locations = []
-        for t in igame.teams:
-            for m in t.members:
-                for lh in m.location_history:
+        for team in game.teams:
+            for player in team.players:
+                for lh in player.locationHistory:
                     all_locations.append( {
-                        'team_name': t.name,
-                        'team_id':   t.id,
+                        'team_name': team.name,
+                        'team_id':   team.id,
                         'timestamp': lh.timestamp.timestamp(),
                         'latitude':  lh.latitude,
                         'longitude': lh.longitude,
@@ -76,13 +82,13 @@ class ScoringTraditional(Scoring):
     def __init__(self):
         super().__init__()
         
-    def score_igame(self, igame):
-        counters = self.get_zero_counters(igame)
-        all_locations = self.get_all_lh_dict_sorted(igame)
-        validations = self.get_game_cylinders(igame)
+    def score_igame(self, game: Game):
+        counters = self.get_zero_counters(game)
+        all_locations = self.get_all_lh_dict_sorted(game)
+        validations = self.get_game_cylinders(game)
 
         for lh in all_locations:
-            if lh['timestamp'] > igame.end_date.timestamp():
+            if lh['timestamp'] > game.endDate.timestamp():
                 break
             for v in validations:
                 if not lh['altitude']:
@@ -98,9 +104,9 @@ class ScoringTraditional(Scoring):
                     v['valid_alt']       = lh['altitude']
 
         # Add the rest of the score compared to now()
-        compare_date = datetime.utcnow()
-        if compare_date > igame.end_date:
-            compare_date = igame.end_date
+        compare_date = datetime.now()
+        if compare_date > game.endDate:
+            compare_date = game.endDate
         for v in validations:
             if v['valid_team']:
                 to_add = compare_date.timestamp() - v['valid_time']
@@ -108,19 +114,19 @@ class ScoringTraditional(Scoring):
             
         return counters
 
-    def score_latest_update(self, igame):
-        validations = self.get_game_cylinders(igame)
+    def score_latest_update(self, game: Game):
+        validations = self.get_game_cylinders(game)
         
-        for t in igame.teams:
-            for m in t.members:
-                for lh in m.location_history: 
+        for team in game.teams:
+            for player in team.players:
+                for lh in player.locationHistory: 
                     for v in validations:
                         if (self.is_location_in_cylinder(lh, v)
                             and ('valid_alt' not in v or lh.altitude > v['valid_alt'])
                             and ('valid_time' not in v or lh.timestamp.timestamp() > v['valid_time'])):
                             v['valid_time'] = lh.timestamp.timestamp()
-                            v['valid_team'] = t.id
-                            v['valid_color'] = t.get_color_hex()
+                            v['valid_team'] = team.id
+                            v['valid_color'] = team.color
                             v['valid_alt'] = lh.altitude
 
         return (validations)
@@ -131,19 +137,19 @@ class DegressiveScoring(Scoring):
         self.degress_factor = degress_factor
         super().__init__()
 
-    def score_igame(self, igame):
-        counters = self.get_zero_counters(igame)
-        all_locations = self.get_all_lh_dict_sorted(igame)
-        validations = self.get_game_cylinders(igame)
+    def score_game(self, game: Game):
+        counters = self.get_zero_counters(game)
+        all_locations = self.get_all_lh_dict_sorted(game)
+        validations = self.get_game_cylinders(game)
 
         # Add the rest of the score compared to now()
         compare_date = datetime.utcnow()
-        if compare_date > igame.end_date:
-            compare_date = igame.end_date
+        if compare_date > game.endDate:
+            compare_date = game.endDate
         compare_date = compare_date.timestamp()
         
         for lh in all_locations:
-            if lh['timestamp'] > igame.end_date.timestamp():
+            if lh['timestamp'] > game.endDate.timestamp():
                 break
             for v in validations:
                 if not lh['altitude']:
@@ -167,43 +173,37 @@ class DegressiveScoring(Scoring):
         return counters
 
 
-    def score_latest_update(self, igame):
-        validations = self.get_game_cylinders(igame)
+    def score_latest_update(self, game: Game):
+        validations = self.get_game_cylinders(game)
         compare_date = datetime.utcnow().timestamp()
         
-        for t in igame.teams:
-            for m in t.members:
-                for lh in m.location_history: 
+        for team in game.teams:
+            for player in team.players:
+                for lh in player.locationHistory: 
                     for v in validations:
                         if (self.is_location_in_cylinder(lh, v)
                             and ('valid_alt' not in v or lh.altitude > (v['valid_alt']  - self.degress_factor * (compare_date-v['valid_time'])))
                             and ('valid_time' not in v or lh.timestamp.timestamp() > v['valid_time'])):
                             v['valid_time'] = lh.timestamp.timestamp()
-                            v['valid_team'] = t.id
-                            v['valid_color'] = t.get_color_hex()
+                            v['valid_team'] = team.id
+                            v['valid_color'] = team.color
                             v['valid_alt'] = lh.altitude
 
         for v in validations:
             if 'valid_alt' in v:
                 v['valid_alt'] = max(0,v['valid_alt']  - self.degress_factor * (compare_date-v['valid_time']))
         return (validations)
-        
-        return
-                                    
-
 
 class ScoringFactory():
     def __init__(self):
         return
     
     def get_scoring_system(self, system):
-        # Py3.10 only
-        #match system:
-        #    case 'trad':
-        if system == 'trad':
+
+        if system == ScoringType.TRAD.name:
             return ScoringTraditional()
 
-        if system == 'degress':
+        if system == ScoringType.DEGRESS.name:
             return DegressiveScoring(1)
 
         # default

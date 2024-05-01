@@ -1,0 +1,22 @@
+meta {
+  name: Update team with color true
+  type: http
+  seq: 5
+}
+
+put {
+  url: http://localhost:5066/team/{{teamId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Team 🪂",
+    "color": true
+  }
+}
+
+vars:pre-request {
+  teamId: 1
+}
